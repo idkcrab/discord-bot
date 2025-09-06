@@ -1,15 +1,47 @@
-import requests
+import discord
+from discord.ext import commands, tasks
+from itertools import cycle
+import os
 
-webhook_url = "https://discord.com/api/webhooks/1409698735713419264/XnRiwOydqQbs0J3Kzo6L3poOB-90UDGZHYiOtO3099YCCCSzghMi-vKrHFdD-GPMHOKV"
+# Flask keep_alive server
+from flask import Flask
+from threading import Thread
 
-data = {
-    "embeds": [
-        {
-            "title": "a",
-            "description": "you gay asf nigga",  # <-- change this
-            "color": 0x00ff00
-        }
-    ]
-}
+app = Flask('')
 
-requests.post(webhook_url, json=data)
+@app.route('/')
+def main():
+    return "Your Bot Is Ready"
+
+def run():
+    app.run(host="0.0.0.0", port=8000)
+
+def keep_alive():
+    server = Thread(target=run)
+    server.start()
+
+# --- Discord Bot Setup ---
+intents = discord.Intents.default()
+bot = commands.Bot(command_prefix="!", intents=intents)
+
+status = cycle(['with Python', 'GorillaTag'])
+
+@bot.event
+async def on_ready():
+    await bot.tree.sync()  # sync slash commands (only once, keep here on Replit)
+    change_status.start()
+    print("✅ Your bot is ready and commands are synced")
+
+@tasks.loop(seconds=10)
+async def change_status():
+    await bot.change_presence(activity=discord.Game(next(status)))
+
+# Slash Command (/online)
+@bot.tree.command(name="online", description="Check if the bot is online")
+async def online(interaction: discord.Interaction):
+    await interaction.response.send_message("✅ Yes, I'm online!")
+
+# --- Run Bot ---
+keep_alive()
+TOKEN = os.environ["DISCORD_TOKEN"]  # Add your bot token in Replit Secrets
+bot.run(TOKEN)
